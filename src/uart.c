@@ -1,6 +1,6 @@
 /**
  * @file uart.c
- * @author eng. Jakub Jasiejko
+ * @author Jakub Jasiejko
  * @date 2025-03-15
  * @brief UART-USB communication helpers with XOR checksum support.
  *

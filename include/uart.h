@@ -1,6 +1,6 @@
 /**
  * @file uart.h
- * @author eng. Jakub Jasiejko
+ * @author Jakub Jasiejko
  * @date 2025-03-15
  * @brief UART-USB communication header with XOR checksum support.
  *
