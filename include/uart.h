@@ -1,14 +1,13 @@
 /**
  * @file uart.h
- * @author inż. Jakub Jasiejko
+ * @author eng. Jakub Jasiejko
  * @date 2025-03-15
- * @brief Nagłówek do obsługi komunikacji UART-USB z sumą kontrolną XOR.
+ * @brief UART-USB communication header with XOR checksum support.
  *
  * @details
- * Plik nagłówkowy zawiera deklaracje funkcji służących do inicjalizacji
- * portu UART, rozpoczęcia komunikacji z hostem oraz przesyłania komunikatów
- * diagnostycznych lub błędów. Komunikacja oparta jest na prostym protokole
- * z sumą kontrolną XOR dla weryfikacji danych.
+ * This header declares helper functions used to initialize the UART port,
+ * start communication with a host, and send diagnostic or error messages.
+ * Communication is based on a simple XOR checksum protocol for frame validation.
  */
 
  #ifndef UART_H
@@ -36,46 +35,46 @@
  #endif
  
  /**
-  * @brief Oblicza sumę kontrolną XOR dwóch bajtów.
+  * @brief Computes the XOR checksum of two bytes.
   *
-  * @param byte1 Pierwszy bajt
-  * @param byte2 Drugi bajt
-  * @return uint8_t Wynik XOR jako suma kontrolna
+  * @param byte1 First byte
+  * @param byte2 Second byte
+  * @return uint8_t XOR checksum value
   */
  uint8_t checksum(uint8_t byte1, uint8_t byte2);
  
  /**
-  * @brief Inicjalizuje port UART z ustawieniami z pliku konfiguracyjnego.
+  * @brief Initializes the UART port using settings defined in this header.
   *
-  * Parametry transmisji:
-  * - Prędkość transmisji (BAUDRATE)
-  * - 8 bitów danych
-  * - 1 bit stopu
-  * - Brak parzystości i flow control
+  * Transmission parameters:
+  * - baud rate
+  * - 8 data bits
+  * - 1 stop bit
+  * - no parity and no flow control
   */
  void initUART();
  
  /**
-  * @brief Rozpoczyna komunikację UART z komputerem lub urządzeniem nadrzędnym.
+  * @brief Starts UART communication with a host computer or master device.
   *
-  * Czeka na ramkę startową [0xAA][0x01][checksum], weryfikuje poprawność danych
-  * i wysyła odpowiedź potwierdzającą lub komunikat o błędzie (timeout).
+  * Waits for the startup frame [0xAA][0x01][checksum], validates it,
+  * and sends either an acknowledgment or a timeout error frame.
   */
  void beginSerialCommunication();
  
  /**
-  * @brief Wysyła ramkę błędu w formacie [0xAA][errorMask][checksum].
+  * @brief Sends an error frame in the format [0xAA][errorMask][checksum].
   *
-  * @param errorMask Kod błędu do przesłania przez UART (np. 0xCC, 0xDD)
+  * @param errorMask Error code sent over UART, for example 0xCC or 0xDD
   */
  void errorOnUART(uint8_t errorMask);
  
  /**
-  * @brief Wysyła 16-bitową wartość w formacie binarnym (ASCII '0'/'1') przez UART.
+  * @brief Sends a 16-bit value over UART as an ASCII binary string.
   *
-  * Umożliwia debugowanie wartości konfiguracyjnych (np. rejestry FDC1004).
+  * Useful for debugging configuration values such as FDC1004 registers.
   *
-  * @param value Wartość 16-bitowa do wyświetlenia binarnie
+  * @param value 16-bit value to print in binary form
   */
  void binaryDebug(uint16_t value);
  

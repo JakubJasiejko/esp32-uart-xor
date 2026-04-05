@@ -1,17 +1,17 @@
 # esp32-uart-xor
 
-Lekka biblioteka UART dla ESP32 z prostą obsługą ramek diagnostycznych i sumą kontrolną XOR.
+A lightweight UART helper for ESP32 with simple diagnostic frames and XOR checksum support.
 
-## Co zawiera
-- inicjalizację UART z gotowymi domyślnymi parametrami
-- pomocniczą funkcję `checksum()`
-- proste ramki diagnostyczne i start komunikacji
+## Features
+- UART initialization with sensible default settings
+- helper `checksum()` function
+- simple diagnostic frames and startup handshake
 
-## Pliki
+## Files
 - `include/uart.h`
 - `src/uart.c`
 
-## Szybki start
+## Quick start
 ```c
 #include "uart.h"
 
@@ -23,9 +23,9 @@ void app_main(void)
 }
 ```
 
-## Domyślna konfiguracja
+## Default configuration
 - baudrate: `921600`
 - port: `UART_NUM_0`
 - bufor RX/TX: `16384`
 
-Pełny przykład znajdziesz w `examples/basic_usage/basic_usage.c`.
+See `examples/basic_usage/basic_usage.c` for a complete example.
