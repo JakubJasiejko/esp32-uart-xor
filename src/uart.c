@@ -1,15 +1,13 @@
 /**
  * @file uart.c
- * @author inż. Jakub Jasiejko
+ * @author eng. Jakub Jasiejko
  * @date 2025-03-15
- * @brief Obsługa komunikacji UART-USB dla systemu pedobarograficznego.
+ * @brief UART-USB communication helpers with XOR checksum support.
  *
  * @details
- * Biblioteka realizuje komunikację UART z sumą kontrolną XOR, wykorzystywaną
- * do połączenia z aplikacją zewnętrzną przez USB. Zawiera funkcje inicjalizacji portu,
- * ustanowienia protokołu komunikacji oraz przesyłania błędów i danych diagnostycznych.
- *
- * Projekt: Pedobarograf PODOLOGIA.PL
+ * This module provides a simple UART transport with an XOR checksum,
+ * intended for basic command exchange, diagnostic output, and error reporting
+ * over a USB-UART connection.
  */
 
  #include "uart.h"
@@ -18,26 +16,28 @@
  #include "sdkconfig.h"
  
  /**
-  * @brief Oblicza sumę kontrolną XOR dla dwóch bajtów.
+  * @brief Computes the XOR checksum for two bytes.
   *
-  * Służy do prostego zabezpieczenia ramki danych przez XOR obu bajtów.
+  * This helper is used to protect a simple three-byte frame by XORing
+  * the first two bytes.
   *
-  * @param byte1 Pierwszy bajt
-  * @param byte2 Drugi bajt
-  * @return uint8_t Suma kontrolna (XOR bitowy)
+  * @param byte1 First byte.
+  * @param byte2 Second byte.
+  * @return uint8_t Bitwise XOR checksum.
   */
  uint8_t checksum(uint8_t byte1, uint8_t byte2) {
      return byte1 ^ byte2;
  }
  
  /**
- * @brief Inicjalizuje port UART zgodnie z parametrami zdefiniowanymi w uart.h.
+  * @brief Initializes the UART peripheral using the defaults from `uart.h`.
   *
-  * Parametry:
-  * - Prędkość transmisji (baud rate)
-  * - 8 bitów danych
-  * - 1 bit stopu
-  * - Brak parzystości i flow control
+  * Configuration:
+  * - configured baud rate
+  * - 8 data bits
+  * - 1 stop bit
+  * - no parity
+  * - no hardware flow control
   */
  void initUART() {
      uart_config_t uart_config = {
@@ -56,12 +56,12 @@
  }
  
  /**
-  * @brief Rozpoczyna komunikację UART z urządzeniem nadrzędnym (np. komputerem).
+  * @brief Starts the UART handshake with a host device such as a PC.
   *
-  * Oczekuje na ramkę: [0xAA][0x01][CHECKSUM], weryfikuje ją i odpowiada:
-  * - Poprawna: wysyła [0xAA][0x02][CHECKSUM]
-  * - Błędna: nic nie wysyła (lub wypisuje debug)
-  * - Timeout (10s): wysyła [0xAA][0xFF][CHECKSUM]
+  * The function waits for the frame `[0xAA][0x01][CHECKSUM]` and replies with:
+  * - `[0xAA][0x02][CHECKSUM]` on success
+  * - no reply when the frame is invalid
+  * - `[0xAA][0xFF][CHECKSUM]` on timeout
   */
  void beginSerialCommunication() {
      initUART();
@@ -80,7 +80,7 @@
          int64_t start_time = esp_timer_get_time();
  
          #ifdef UART_DEBUG
-             uart_write_bytes(UART_PORT, "Czekam na 0xAA 0x01...\n", 22);
+            uart_write_bytes(UART_PORT, "Waiting for 0xAA 0x01...\n", 25);
          #endif
  
          while ((esp_timer_get_time() - start_time) / 1000 < 10000) {
@@ -90,7 +90,7 @@
                  uint8_t calculatedChecksum = checksum(received_data[0], received_data[1]);
  
                  #ifdef UART_DEBUG
-                     uart_write_bytes(UART_PORT, "Odebrano: ", 10);
+                    uart_write_bytes(UART_PORT, "Received: ", 10);
                      uart_write_bytes(UART_PORT, received_data, 3);
                      uart_write_bytes(UART_PORT, "\n", 1);
                  #endif
@@ -106,18 +106,18 @@
                      uart_write_bytes(UART_PORT, &responseChecksum, 1);
  
                      #ifdef UART_DEBUG
-                         uart_write_bytes(UART_PORT, "\nPotwierdzenie wysłane (0x02)\n", 30);
+                        uart_write_bytes(UART_PORT, "\nAcknowledgment sent (0x02)\n", 30);
                      #endif
                      return;
                  } else {
                      #ifdef UART_DEBUG
-                         uart_write_bytes(UART_PORT, "Błąd sumy kontrolnej!\n", 24);
+                        uart_write_bytes(UART_PORT, "Checksum error!\n", 16);
                      #endif
                  }
              }
          }
  
-         // Timeout – brak danych
+        // Timeout: no valid frame received
          uint8_t timeoutSum = checksum(startByte, error_byte);
  
          uart_write_bytes(UART_PORT, &startByte, 1);
@@ -125,15 +125,15 @@
          uart_write_bytes(UART_PORT, &timeoutSum, 1);
  
          #ifdef UART_DEBUG
-             uart_write_bytes(UART_PORT, "\nTimeout - brak odpowiedzi, wysłano 0xFF\n", 41);
+            uart_write_bytes(UART_PORT, "\nTimeout: no response, sent 0xFF\n", 34);
          #endif
      }
  }
  
  /**
-  * @brief Wysyła ramkę błędu przez UART w formacie [0xAA][errorMask][checksum].
+  * @brief Sends an error frame over UART in the format `[0xAA][errorMask][checksum]`.
   *
-  * @param errorMask Kod błędu do wysłania (np. 0xCC, 0xDD itd.)
+  * @param errorMask Error code to send, for example `0xCC` or `0xDD`.
   */
  void errorOnUART(uint8_t errorMask) {
      uint8_t startByte = 0xAA;
@@ -145,11 +145,11 @@
  }
  
  /**
-  * @brief Wysyła wartość binarną (16 bitów) przez UART jako ciąg znaków ASCII ('1' i '0').
+  * @brief Sends a 16-bit value as an ASCII binary string over UART.
   *
-  * Umożliwia szybki podgląd zawartości rejestru lub konfiguracji np. FDC1004.
+  * Useful for quick register and configuration debugging.
   *
-  * @param value Wartość 16-bitowa do wysłania
+  * @param value 16-bit value to send.
   */
  void binaryDebug(uint16_t value) {
      char binary_str[17];
